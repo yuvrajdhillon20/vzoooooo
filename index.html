@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virtual Zoo · The Wild Journey</title>
+  <meta name="description" content="An immersive 3D virtual zoo experience. Journey through 10 spectacular animal habitats — from the African Savanna to the Ocean Deep — rendered live in your browser.">
+  <meta name="theme-color" content="#070b10">
+  <meta property="og:title" content="Virtual Zoo · The Wild Journey">
+  <meta property="og:description" content="Immersive 3D scroll journey through 10 spectacular animal habitats.">
+
+  <!-- Google Fonts preconnect -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Three.js ES Module Import Map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- ── 3D Canvas ─────────────────────────────────────── -->
+  <canvas id="canvas" aria-hidden="true"></canvas>
+
+  <!-- ── CSS2D Label Container ─────────────────────────── -->
+  <div id="labels-container" aria-hidden="true"></div>
+
+  <!-- ── FPS Counter ───────────────────────────────────── -->
+  <div class="fps-counter" id="fps-counter" aria-hidden="true">-- fps</div>
+
+  <!-- ══════════════════════════════════════════════════════
+       PRE-LOADER VEIL
+  ══════════════════════════════════════════════════════ -->
+  <div id="veil" class="veil" role="dialog" aria-label="Virtual Zoo loading screen">
+    <div class="veil__content">
+      <div class="veil__star" aria-hidden="true">✦</div>
+      <h1 class="veil__title">Virtual Zoo</h1>
+      <p class="veil__subtitle">the wild journey</p>
+      <div class="veil__divider" aria-hidden="true"></div>
+
+      <!-- Loading indicator -->
+      <div class="veil__loader" id="loader">
+        <span class="veil__loader-text" id="loader-text">INITIALIZING HABITATS</span>
+        <span class="veil__loader-pct" id="loader-pct">0%</span>
+      </div>
+
+      <!-- Begin button (shown after load) -->
+      <button class="veil__btn" id="begin-btn" style="display:none;" aria-label="Begin the virtual zoo tour">
+        <span class="btn-icon" aria-hidden="true">►</span>
+        BEGIN THE TOUR
+      </button>
+      <p class="veil__sound-hint" id="sound-hint" style="display:none; opacity:0;">
+        BEST WITH SOUND ON
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       TOP-RIGHT CONTROLS BAR
+  ══════════════════════════════════════════════════════ -->
+  <div class="controls-bar" id="controls-bar" role="toolbar" aria-label="Zoo controls">
+    <button class="ctrl-btn" id="freeroam-btn" aria-label="Toggle free roam mode (F)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+      FREE ROAM <span class="ctrl-key">F</span>
+    </button>
+
+    <button class="ctrl-btn" id="sound-btn" data-state="on" aria-label="Toggle sound">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+      </svg>
+      <span class="ctrl-text">SOUND ON</span>
+    </button>
+
+    <button class="ctrl-btn" id="daynight-btn" data-mode="auto" aria-label="Toggle Day/Night Cycle">
+      <span>🌙</span> <span class="ctrl-text">DAY / NIGHT</span>
+    </button>
+
+    <button class="ctrl-btn ctrl-btn--accent" id="experience-btn" aria-label="Start autoplay experience mode">
+      <span class="btn-icon" aria-hidden="true">►</span>
+      EXPERIENCE
+    </button>
+
+    <button class="ctrl-btn ctrl-btn--icon" id="settings-btn" aria-label="Settings">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       LEFT INFO PANEL
+  ══════════════════════════════════════════════════════ -->
+  <aside class="info-panel" id="info-panel" aria-label="Habitat information">
+    <button class="panel-close" id="panel-close" aria-label="Toggle panel">✕</button>
+
+    <div id="panel-hero" class="panel-hero"></div>
+
+    <div class="panel-stage" id="panel-stage">STAGE I · ENTRY PLAZA</div>
+
+    <h2 class="panel-title" id="panel-title">
+      The <em>Gateway</em>
+    </h2>
+
+    <!-- Stats -->
+    <div class="panel-stats">
+      <div class="panel-stat">
+        <div class="panel-stat__label" id="stat1-label">📍 ZOO AREA</div>
+        <div class="panel-stat__value" id="stat1-value">2.4<span class="stat-unit">km²</span></div>
+        <div class="panel-stat__sub"   id="stat1-sub">TOTAL SIZE</div>
+      </div>
+      <div class="panel-stat">
+        <div class="panel-stat__label" id="stat2-label">🦁 TOTAL SPECIES</div>
+        <div class="panel-stat__value" id="stat2-value">340</div>
+        <div class="panel-stat__sub"   id="stat2-sub">ACROSS 9 ZONES</div>
+      </div>
+    </div>
+
+    <!-- Mini graph -->
+    <div class="panel-graph">
+      <canvas id="mini-graph" width="340" height="60" aria-hidden="true"></canvas>
+      <div class="panel-graph__label" id="graph-label">VISITOR EXPERIENCE RATING</div>
+    </div>
+
+    <!-- Description -->
+    <div class="panel-desc" id="panel-desc">
+      Welcome to the most immersive virtual zoo on Earth. Step through the grand gateway and prepare to encounter the extraordinary. Spanning over 2.4 km², this zoo is home to more than <strong>340 species</strong> across 9 distinct habitats.
+    </div>
+
+    <!-- Tags -->
+    <div class="panel-tags" id="panel-tags">
+      <span class="tag">WELCOME</span>
+      <span class="tag">340 SPECIES</span>
+      <span class="tag">9 HABITATS</span>
+    </div>
+
+    <!-- Footer -->
+    <div class="panel-footer" id="panel-footer">
+      STAGE I · GATEWAY · START YOUR JOURNEY
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════════════
+       RIGHT NAV DOTS
+  ══════════════════════════════════════════════════════ -->
+  <nav class="nav-dots" id="nav-dots" aria-label="Habitat navigation">
+    <!-- Built by ui.js -->
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════
+       BOTTOM HUD STATS BAR
+  ══════════════════════════════════════════════════════ -->
+  <div class="hud-bar" id="hud-bar" role="status" aria-label="Current habitat stats">
+    <div class="hud-item">
+      <div class="hud-label">ZONE</div>
+      <div class="hud-value hud-value--gold" id="hud-zone">GATEWAY</div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-item">
+      <div class="hud-label">SPECIES</div>
+      <div class="hud-value" id="hud-species">0</div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-item">
+      <div class="hud-label">TEMPERATURE</div>
+      <div class="hud-value" id="hud-temp">24°C</div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-item">
+      <div class="hud-label">DANGER LEVEL</div>
+      <div class="hud-value danger-none" id="hud-danger">NONE</div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-item">
+      <div class="hud-label">TIME OF DAY</div>
+      <div class="hud-value" id="hud-time">MORNING</div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-item">
+      <div class="hud-label">HABITAT</div>
+      <div class="hud-value" id="hud-zonenum">1 / 10</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       FREE ROAM HINT OVERLAY
+  ══════════════════════════════════════════════════════ -->
+  <div class="freeroam-overlay" id="freeroam-overlay" style="display:none;" role="status" aria-live="polite">
+    <div class="freeroam-hint">
+      <div class="freeroam-hint__title">🕹 FREE ROAM ACTIVE</div>
+      <div class="freeroam-hint__controls">
+        <span>WASD — MOVE</span>
+        <span>MOUSE — LOOK</span>
+        <span>SPACE — ASCEND</span>
+        <span>SHIFT — BOOST</span>
+        <span>F / ESC — EXIT</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Entry Point ────────────────────────────────────── -->
+  <script type="module" src="main.js"></script>
+
+</body>
+</html>
